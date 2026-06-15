@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import styled, { createGlobalStyle } from "styled-components";
 import { OrgChart } from "d3-org-chart";
+import type { Layout } from "d3-org-chart";
 import { OrgChartComponent } from "./components/OrgChart";
 import { Toolbar } from "./components/Toolbar";
 import { UserDetailPanel } from "./components/UserDetailPanel";
@@ -17,7 +18,7 @@ const GlobalStyle = createGlobalStyle`
   }
 `;
 
-const Layout = styled.div`
+const AppLayout = styled.div`
   display: flex;
   flex-direction: column;
   height: 100vh;
@@ -35,29 +36,66 @@ export default function App() {
   const [data, setData] = useState<EmployeeNode[]>(initialData);
   const [selectedEmployee, setSelectedEmployee] = useState<EmployeeNode | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [layout, setLayout] = useState<Layout>("top");
+  const [isCompact, setIsCompact] = useState(false);
 
   function handleAddEmployee(newEmployee: EmployeeNode) {
     setData((prev) => [...prev, newEmployee]);
     chartRef.current?.addNode(newEmployee as never);
   }
 
+  function handleRemoveEmployee(id: string) {
+    chartRef.current?.removeNode(id);
+    setData((prev) => prev.filter((e) => e.id !== id));
+    setSelectedEmployee(null);
+  }
+
+  function handleLayoutChange(newLayout: Layout) {
+    setLayout(newLayout);
+    const chart = chartRef.current;
+    if (!chart) return;
+    (chart.layout as (v: Layout) => OrgChart<EmployeeNode>)(newLayout);
+    chart.render();
+    chart.fit();
+  }
+
+  function handleCompactToggle() {
+    const next = !isCompact;
+    setIsCompact(next);
+    const chart = chartRef.current;
+    if (!chart) return;
+    (chart.compact as (v: boolean) => OrgChart<EmployeeNode>)(next);
+    chart.render();
+    chart.fit();
+  }
+
   return (
     <>
       <GlobalStyle />
-      <Layout>
-        <Toolbar chartRef={chartRef} employees={data} onAddClick={() => setShowAddForm(true)} />
+      <AppLayout>
+        <Toolbar
+          chartRef={chartRef}
+          employees={data}
+          layout={layout}
+          isCompact={isCompact}
+          onAddClick={() => setShowAddForm(true)}
+          onLayoutChange={handleLayoutChange}
+          onCompactToggle={handleCompactToggle}
+        />
         <ChartArea>
           <OrgChartComponent
-            data={data}
+            initialData={initialData}
             onNodeClick={setSelectedEmployee}
             chartRef={chartRef}
           />
         </ChartArea>
-      </Layout>
+      </AppLayout>
 
       <UserDetailPanel
         employee={selectedEmployee}
+        chartRef={chartRef}
         onClose={() => setSelectedEmployee(null)}
+        onRemove={handleRemoveEmployee}
       />
 
       {showAddForm && (

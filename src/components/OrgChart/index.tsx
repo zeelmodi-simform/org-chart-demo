@@ -5,20 +5,20 @@ import type { EmployeeNode } from "../../types/employee.types";
 import { nodeTemplate } from "./nodeTemplate";
 
 interface OrgChartProps {
-  data: EmployeeNode[];
+  initialData: EmployeeNode[];
   onNodeClick: (employee: EmployeeNode) => void;
   chartRef: React.MutableRefObject<OrgChart<EmployeeNode> | null>;
 }
 
-export function OrgChartComponent({ data, onNodeClick, chartRef }: OrgChartProps) {
+export function OrgChartComponent({ initialData, onNodeClick, chartRef }: OrgChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!containerRef.current || !data.length) return;
+    if (!containerRef.current || !initialData.length) return;
 
     chartRef.current = new OrgChart<EmployeeNode>()
       .container(containerRef.current as unknown as string)
-      .data(data)
+      .data(initialData)
       .nodeWidth(() => 240)
       .nodeHeight(() => 82)
       .childrenMargin(() => 50)
@@ -27,8 +27,8 @@ export function OrgChartComponent({ data, onNodeClick, chartRef }: OrgChartProps
       .nodeContent((d: HierarchyNode<EmployeeNode>) => nodeTemplate(d.data))
       .onNodeClick((d: HierarchyNode<EmployeeNode>) => onNodeClick(d.data))
       .render();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div

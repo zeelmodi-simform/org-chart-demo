@@ -1,9 +1,13 @@
+import { useState } from "react";
 import styled, { keyframes } from "styled-components";
+import type { OrgChart } from "d3-org-chart";
 import type { EmployeeNode } from "../../types/employee.types";
 
 interface UserDetailPanelProps {
   employee: EmployeeNode | null;
+  chartRef: React.MutableRefObject<OrgChart<EmployeeNode> | null>;
   onClose: () => void;
+  onRemove: (id: string) => void;
 }
 
 const slideIn = keyframes`
@@ -54,7 +58,6 @@ const CloseBtn = styled.button`
   cursor: pointer;
   line-height: 1;
   padding: 4px;
-
   &:hover { color: #111827; }
 `;
 
@@ -62,6 +65,14 @@ const Body = styled.div`
   flex: 1;
   overflow-y: auto;
   padding: 24px 20px;
+`;
+
+const Footer = styled.div`
+  padding: 16px 20px;
+  border-top: 1px solid #f3f4f6;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 `;
 
 const AvatarSection = styled.div`
@@ -147,6 +158,58 @@ const Divider = styled.div`
   margin: 16px 0;
 `;
 
+const ActionBtn = styled.button`
+  width: 100%;
+  padding: 9px 14px;
+  border-radius: 7px;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  color: #374151;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s;
+  &:hover { background: #f9fafb; }
+`;
+
+const DangerActionBtn = styled(ActionBtn)`
+  color: #dc2626;
+  border-color: #fecaca;
+  &:hover { background: #fef2f2; border-color: #dc2626; }
+`;
+
+const ConfirmRow = styled.div`
+  display: flex;
+  gap: 8px;
+`;
+
+const ConfirmBtn = styled.button`
+  flex: 1;
+  padding: 8px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  background: #dc2626;
+  color: #ffffff;
+  &:hover { background: #b91c1c; }
+`;
+
+const CancelBtn = styled.button`
+  flex: 1;
+  padding: 8px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  color: #374151;
+  &:hover { background: #f9fafb; }
+`;
+
 const AVATAR_COLORS = ["#4f46e5", "#0891b2", "#059669", "#d97706", "#dc2626", "#7c3aed"];
 
 function getAvatarColor(name: string): string {
@@ -165,17 +228,33 @@ const EMPLOYMENT_LABEL: Record<string, string> = {
   CONTRACTOR: "Contractor",
 };
 
-export function UserDetailPanel({ employee, onClose }: UserDetailPanelProps) {
+export function UserDetailPanel({ employee, chartRef, onClose, onRemove }: UserDetailPanelProps) {
+  const [confirmingRemove, setConfirmingRemove] = useState(false);
+
   if (!employee) return null;
+
+  const isRoot = employee.parentId === null;
+
+  function handleShowReportingPath() {
+    chartRef.current?.clearHighlighting();
+    chartRef.current?.setUpToTheRootHighlighted(employee!.id).render();
+    chartRef.current?.setCentered(employee!.id);
+  }
+
+  function handleRemoveConfirm() {
+    onRemove(employee!.id);
+    setConfirmingRemove(false);
+  }
 
   return (
     <>
-      <Overlay onClick={onClose} />
+      <Overlay onClick={() => { setConfirmingRemove(false); onClose(); }} />
       <Drawer>
         <Header>
           <HeaderTitle>Employee Details</HeaderTitle>
-          <CloseBtn onClick={onClose} aria-label="Close">×</CloseBtn>
+          <CloseBtn onClick={() => { setConfirmingRemove(false); onClose(); }} aria-label="Close">×</CloseBtn>
         </Header>
+
         <Body>
           <AvatarSection>
             <Avatar $color={getAvatarColor(employee.displayName)}>
@@ -212,6 +291,25 @@ export function UserDetailPanel({ employee, onClose }: UserDetailPanelProps) {
             </Field>
           </Section>
         </Body>
+
+        <Footer>
+          <ActionBtn onClick={handleShowReportingPath}>
+            🔗 Show Reporting Path to Root
+          </ActionBtn>
+
+          {!isRoot && !confirmingRemove && (
+            <DangerActionBtn onClick={() => setConfirmingRemove(true)}>
+              🗑 Remove Employee
+            </DangerActionBtn>
+          )}
+
+          {confirmingRemove && (
+            <ConfirmRow>
+              <CancelBtn onClick={() => setConfirmingRemove(false)}>Cancel</CancelBtn>
+              <ConfirmBtn onClick={handleRemoveConfirm}>Confirm Remove</ConfirmBtn>
+            </ConfirmRow>
+          )}
+        </Footer>
       </Drawer>
     </>
   );
